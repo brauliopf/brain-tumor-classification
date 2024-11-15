@@ -186,18 +186,17 @@ if uploaded_file is not None:
         ("Transfer Learning - Xception", "Transfer Learning - EfficientNetB3", "CNN 1M-Parameters", "CNN 4M7-Parameters")
     )
 
-    models_folder_path = os.path.abspath(os.path.join(os.path.dirname("/src/app.py"), '..', 'models'))
     if selected_model == "Transfer Learning - Xception":
-        model = load_transfered_model('Xception', os.path.join(models_folder_path, 'xception_model.weights.h5'), 299)
+        model = load_transfered_model('Xception', './models/xception_model.weights.h5', 299)
         img_size = (299, 299)
     elif selected_model == "Transfer Learning - EfficientNetB3":
-        model = load_transfered_model('EfficientNetB3', os.path.join(models_folder_path, 'efficientnet_model.weights.h5'), 300)
+        model = load_transfered_model('EfficientNetB3', './models/efficientnet_model.weights.h5', 300)
         img_size = (300, 300)
     elif selected_model == "CNN 1M-Parameters":
-        model = load_model(os.path.join(models_folder_path, 'cnn_model_1M0.h5'))
+        model = load_model('./models/cnn_model_1M0.h5')
         img_size = (224, 224)
     else:
-        model = load_model(os.path.join(models_folder_path, 'cnn_model_4M7.h5'))
+        model = load_model('./models/cnn_model_4M7.h5')
         img_size = (224, 224)
 
     # LIST PREDICTIONS
