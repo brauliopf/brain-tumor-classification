@@ -186,7 +186,7 @@ if uploaded_file is not None:
         ("Transfer Learning - Xception", "Transfer Learning - EfficientNetB3", "CNN 1M-Parameters", "CNN 4M7-Parameters")
     )
 
-    models_folder_path = os.path.abspath(os.path.join(os.path.dirname("app.py"), '..', 'models'))
+    models_folder_path = os.path.abspath(os.path.join(os.path.dirname("/src/app.py"), '..', 'models'))
     if selected_model == "Transfer Learning - Xception":
         model = load_transfered_model('Xception', os.path.join(models_folder_path, 'xception_model.weights.h5'), 299)
         img_size = (299, 299)
