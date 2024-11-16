@@ -3,5 +3,5 @@ streamlit
 python-dotenv
 google-generativeai
 tensorflow
-matplotlib.pyplot
+matplotlib
 plotly
