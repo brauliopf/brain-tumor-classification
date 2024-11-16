@@ -27,6 +27,7 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 output_dir = 'saliency_maps'
 os.makedirs(output_dir, exist_ok=True)
+use_cv2 = True
 
 # this is a multimodal prompt. it has a text body and an image attachment
 # tips to improve prompt
@@ -59,6 +60,66 @@ def generate_explanation(img_path, model_prediction, confidence):
 
     return response.text
 
+from PIL import Image
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
+
+def generate_saliency_map_no_cv2(model, img_array, class_index, img_size, image):
+    with tf.GradientTape() as tape:
+        img_tensor = tf.convert_to_tensor(img_array)
+        tape.watch(img_tensor)
+        predictions = model(img_tensor)
+        target_class = predictions[0, class_index]
+        gradients = tape.gradient(target_class, img_tensor)
+        gradients = tf.math.abs(gradients)
+        gradients = tf.reduce_max(gradients, axis=-1)
+        gradients = gradients.numpy().squeeze()
+
+    # Resize gradients to match original image size using Pillow
+    print(gradients)
+    gradients = Image.fromarray(gradients)
+    gradients = gradients.resize(img_size, Image.BILINEAR)
+    gradients = np.array(gradients)
+
+    # Create a circular mask for the brain area
+    center = (gradients.shape[0] // 2, gradients.shape[1] // 2)
+    radius = min(center[0], center[1]) - 10
+    y, x = np.ogrid[:gradients.shape[0], :gradients.shape[1]]
+    mask = (x - center[0])**2 + (y - center[1])**2 <= radius**2
+
+    # Apply mask to gradients
+    gradients = gradients * mask
+
+    # Normalize only the brain area
+    brain_gradients = gradients[mask]
+    if brain_gradients.max() > brain_gradients.min():
+        brain_gradients = (brain_gradients - brain_gradients.min()) / (brain_gradients.max() - brain_gradients.min())
+    gradients[mask] = brain_gradients
+
+    # Apply a higher threshold
+    threshold = np.percentile(gradients[mask], 80)
+    gradients[gradients < threshold] = 0
+
+    # Apply more aggressive smoothing using SciPy's Gaussian Filter
+    gradients = gaussian_filter(gradients, sigma=5)
+
+    # Create a heatmap overlay with enhanced contrast
+    # Normalize gradients to [0, 1]
+    normalized_gradients = (gradients - np.min(gradients)) / (np.max(gradients) - np.min(gradients))
+
+    colormap = plt.get_cmap("jet")
+    heatmap = colormap(normalized_gradients)[:, :, :3]  # Remove the alpha channel if present
+    heatmap = (heatmap * 255).astype(np.uint8)  # Convert to uint8 format
+
+    # Resize the heatmap to match the desired size
+    heatmap = Image.fromarray(heatmap).resize(img_size, Image.BILINEAR)
+
+    # Superimpose the heatmap on the original image with increased opacity
+    image = image.resize(img_size, Image.Resampling.NEAREST).convert("RGB")
+    superimposed_img = Image.blend(image, heatmap, alpha=0.7)
+
+    return superimposed_img
+
 def generate_saliency_map(model, img_array, class_index, img_size):
     """
     Creates a visual representation (saliency map) highlighting areas of a brain MRI image that are most important for the model's prediction. Thus, enhancing transparency and trust in the output.
@@ -71,11 +132,11 @@ def generate_saliency_map(model, img_array, class_index, img_size):
         predictions = model(img_tensor)
         target_class = predictions[:, class_index]
 
-    # Gradient processing
-    gradients = tape.gradient(target_class, img_tensor)
-    gradients = tf.math.abs(gradients)
-    gradients = tf.reduce_max(gradients, axis=-1)
-    gradients = gradients.numpy().squeeze()
+        # Gradient processing
+        gradients = tape.gradient(target_class, img_tensor)
+        gradients = tf.math.abs(gradients)
+        gradients = tf.reduce_max(gradients, axis=-1)
+        gradients = gradients.numpy().squeeze()
 
     # Resize gradients to match original image size
     gradients = cv2.resize(gradients, img_size)
@@ -276,8 +337,13 @@ if uploaded_file is not None:
 
     st.plotly_chart(fig)
 
-    saliency_map = generate_saliency_map(model, img_array, class_index, img_size)
-    saliency_map_path = f'saliency_maps/{uploaded_file.name}'
+    if use_cv2:
+        saliency_map = generate_saliency_map(model, img_array, class_index, img_size)
+        saliency_map_path = f'saliency_maps/{uploaded_file.name}'
+    else:
+        saliency_map = generate_saliency_map_no_cv2(model, img_array, class_index, img_size, img)
+        saliency_map_path = f'saliency_maps/{uploaded_file.name}'
+        saliency_map.save(saliency_map_path)
     explanation = generate_explanation(saliency_map_path, result, predictions[0][class_index])
 
     st.write("## Explanation")
