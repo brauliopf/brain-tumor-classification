@@ -6,3 +6,7 @@ Create a webapp with streamlit to generate predictions usign the models generate
 Furthermore, the application suggests relevant actions to add to a patient's care plan in the short-term.
 
 The app is available at: https://brain-tumor-classification-brauliopf.streamlit.app/
+
+Contributors:
+@brauliopf
+@headstarter
