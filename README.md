@@ -10,3 +10,5 @@ The app is available at: https://brain-tumor-classification-brauliopf.streamlit.
 Contributors:
 @brauliopf
 @headstarter
+
+NEW CHANGE
